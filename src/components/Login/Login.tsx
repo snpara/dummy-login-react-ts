@@ -1,52 +1,127 @@
-import { ChangeEvent, useState, useEffect } from "react";
+import { ChangeEvent, useState, useReducer, useEffect } from "react";
 
 import Card from "../../UI/Card/Card";
 import Button from "../../UI/Button/Button";
 
 import styles from "./Login.module.css";
 
+enum InputActionKind {
+  USER_INPUT = "USER_INPUT",
+  INPUT_BLUR = "INPUT_BLUR",
+}
+
+interface InputAction {
+  type: InputActionKind;
+}
+
+interface InputActionWithPayload extends InputAction {
+  payload: string;
+}
+
+interface InputState {
+  value: string;
+  isValid: boolean;
+}
+
+const isInputActionWithPayload = (
+  object: InputAction | InputActionWithPayload
+): object is InputActionWithPayload => {
+  return "payload" in object;
+};
+
+const isInputAction = (
+  object: InputAction | InputActionWithPayload
+): object is InputAction => {
+  return !("payload" in object);
+};
+
+const emailReducer = (
+  state: InputState,
+  action: InputAction | InputActionWithPayload
+) => {
+  if (
+    isInputActionWithPayload(action) &&
+    action.type === InputActionKind.USER_INPUT
+  ) {
+    return { value: action.payload, isValid: action.payload.includes("@") };
+  }
+  if (isInputAction(action) && action.type === InputActionKind.INPUT_BLUR) {
+    return { value: state.value, isValid: state.value.includes("@") };
+  }
+  return { value: "", isValid: false };
+};
+
+const passwordReducer = (
+  state: InputState,
+  action: InputAction | InputActionWithPayload
+) => {
+  if (
+    isInputActionWithPayload(action) &&
+    action.type === InputActionKind.USER_INPUT
+  ) {
+    return { value: action.payload, isValid: action.payload.trim().length > 6 };
+  }
+  if (isInputAction(action) && action.type === InputActionKind.INPUT_BLUR) {
+    return { value: state.value, isValid: state.value.trim().length > 6 };
+  }
+  return { value: "", isValid: false };
+};
+
 interface LoginProps {
   onLogin: (enteredEmail: string, enteredPassword: string) => void;
 }
 
 const Login: React.FC<LoginProps> = (props) => {
-  const [enteredEmail, setEnteredEmail] = useState<string>("");
-  const [emailIsValid, setEmailIsValid] = useState<boolean>();
-  const [enteredPassword, setEnteredPassword] = useState<string>("");
-  const [passwordIsValid, setPasswordIsValid] = useState<boolean>();
   const [formIsValid, setFormIsValid] = useState<boolean>(false);
+
+  const [emailState, dispatchEmail] = useReducer(emailReducer, {
+    value: "",
+    isValid: true,
+  });
+
+  const [passwordState, dispatchPassword] = useReducer(passwordReducer, {
+    value: "",
+    isValid: true,
+  });
+
+  const { isValid: emailIsValid } = emailState;
+  const { isValid: passwordIsValid } = passwordState;
 
   useEffect(() => {
     const identifier = setTimeout(() => {
-      setFormIsValid(
-        enteredEmail.includes("@") && enteredPassword.trim().length > 6
-      );
+      setFormIsValid(emailIsValid && passwordIsValid);
     }, 500);
 
     return () => {
       clearTimeout(identifier);
     };
-  }, [enteredEmail, enteredPassword]);
+  }, [emailIsValid, passwordIsValid]);
 
   const emailChangeHandler = (event: ChangeEvent<HTMLInputElement>) => {
-    setEnteredEmail(event.target.value);
+    dispatchEmail({
+      type: InputActionKind.USER_INPUT,
+      payload: event.target.value,
+    });
   };
 
   const passwordChangeHandler = (event: ChangeEvent<HTMLInputElement>) => {
-    setEnteredPassword(event.target.value);
+    dispatchPassword({
+      type: InputActionKind.USER_INPUT,
+      payload: event.target.value,
+    });
   };
 
   const validateEmailHandler = () => {
-    setEmailIsValid(enteredEmail.includes("@"));
+    dispatchEmail({ type: InputActionKind.INPUT_BLUR });
   };
 
   const validatePasswordHandler = () => {
-    setPasswordIsValid(enteredPassword.trim().length > 6);
+    dispatchPassword({ type: InputActionKind.INPUT_BLUR });
   };
 
   const submitHandler = (event: ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
-    props.onLogin(enteredEmail, enteredPassword);
+    props.onLogin(emailState.value, passwordState.value);
   };
 
   return (
@@ -54,28 +129,28 @@ const Login: React.FC<LoginProps> = (props) => {
       <form onSubmit={submitHandler}>
         <div
           className={`${styles.control} ${
-            emailIsValid === false ? styles.invalid : ""
+            emailState.isValid === false ? styles.invalid : ""
           }`}
         >
           <label htmlFor="email">E-Mail</label>
           <input
             type="email"
             id="email"
-            value={enteredEmail}
+            value={emailState.value}
             onChange={emailChangeHandler}
             onBlur={validateEmailHandler}
           />
         </div>
         <div
           className={`${styles.control} ${
-            passwordIsValid === false ? styles.invalid : ""
+            passwordState.isValid === false ? styles.invalid : ""
           }`}
         >
           <label htmlFor="password">Password</label>
           <input
             type="password"
             id="password"
-            value={enteredPassword}
+            value={passwordState.value}
             onChange={passwordChangeHandler}
             onBlur={validatePasswordHandler}
           />
