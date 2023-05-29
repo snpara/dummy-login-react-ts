@@ -14,66 +14,50 @@ import Input from "../Input/Input";
 
 import styles from "./Login.module.css";
 
-enum InputActionKind {
+enum InputActionType {
   USER_INPUT = "USER_INPUT",
   INPUT_BLUR = "INPUT_BLUR",
 }
 
-interface InputAction {
-  type: InputActionKind;
-}
-
-interface InputActionWithPayload extends InputAction {
+type InputAction = {
+  type: typeof InputActionType.USER_INPUT;
   payload: string;
-}
+};
+
+type BlurAction = {
+  type: typeof InputActionType.INPUT_BLUR;
+};
+
+type InputActionTypes = InputAction | BlurAction;
 
 interface InputState {
   value: string;
   isValid: boolean;
 }
 
-const isInputActionWithPayload = (
-  object: InputAction | InputActionWithPayload
-): object is InputActionWithPayload => {
-  return "payload" in object;
+const emailReducer = (state: InputState, action: InputActionTypes) => {
+  switch (action.type) {
+    case InputActionType.USER_INPUT:
+      return { value: action.payload, isValid: action.payload.includes("@") };
+    case InputActionType.INPUT_BLUR:
+      return { value: state.value, isValid: state.value.includes("@") };
+    default:
+      return { value: "", isValid: false };
+  }
 };
 
-const isInputAction = (
-  object: InputAction | InputActionWithPayload
-): object is InputAction => {
-  return !("payload" in object);
-};
-
-const emailReducer = (
-  state: InputState,
-  action: InputAction | InputActionWithPayload
-) => {
-  if (
-    isInputActionWithPayload(action) &&
-    action.type === InputActionKind.USER_INPUT
-  ) {
-    return { value: action.payload, isValid: action.payload.includes("@") };
+const passwordReducer = (state: InputState, action: InputActionTypes) => {
+  switch (action.type) {
+    case InputActionType.USER_INPUT:
+      return {
+        value: action.payload,
+        isValid: action.payload.trim().length > 6,
+      };
+    case InputActionType.INPUT_BLUR:
+      return { value: state.value, isValid: state.value.trim().length > 6 };
+    default:
+      return { value: "", isValid: false };
   }
-  if (isInputAction(action) && action.type === InputActionKind.INPUT_BLUR) {
-    return { value: state.value, isValid: state.value.includes("@") };
-  }
-  return { value: "", isValid: false };
-};
-
-const passwordReducer = (
-  state: InputState,
-  action: InputAction | InputActionWithPayload
-) => {
-  if (
-    isInputActionWithPayload(action) &&
-    action.type === InputActionKind.USER_INPUT
-  ) {
-    return { value: action.payload, isValid: action.payload.trim().length > 6 };
-  }
-  if (isInputAction(action) && action.type === InputActionKind.INPUT_BLUR) {
-    return { value: state.value, isValid: state.value.trim().length > 6 };
-  }
-  return { value: "", isValid: false };
 };
 
 const Login: React.FC = () => {
@@ -111,24 +95,24 @@ const Login: React.FC = () => {
 
   const emailChangeHandler = (event: ChangeEvent<HTMLInputElement>) => {
     dispatchEmail({
-      type: InputActionKind.USER_INPUT,
+      type: InputActionType.USER_INPUT,
       payload: event.target.value,
     });
   };
 
   const passwordChangeHandler = (event: ChangeEvent<HTMLInputElement>) => {
     dispatchPassword({
-      type: InputActionKind.USER_INPUT,
+      type: InputActionType.USER_INPUT,
       payload: event.target.value,
     });
   };
 
   const validateEmailHandler = () => {
-    dispatchEmail({ type: InputActionKind.INPUT_BLUR });
+    dispatchEmail({ type: InputActionType.INPUT_BLUR });
   };
 
   const validatePasswordHandler = () => {
-    dispatchPassword({ type: InputActionKind.INPUT_BLUR });
+    dispatchPassword({ type: InputActionType.INPUT_BLUR });
   };
 
   const submitHandler = (event: ChangeEvent<HTMLFormElement>) => {
